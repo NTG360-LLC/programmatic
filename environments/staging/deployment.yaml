@@ -1,0 +1,125 @@
+# WI-03: ProgrammatIQ Staging Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: programmatic-staging
+  namespace: ntg360
+  labels:
+    app: programmatic
+    environment: staging
+    version: v1.0.0-staging
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: programmatic
+      environment: staging
+  template:
+    metadata:
+      labels:
+        app: programmatic
+        environment: staging
+        version: v1.0.0-staging
+    spec:
+      containers:
+      - name: programmatic
+        image: ntg360/programmatic:staging
+        ports:
+        - containerPort: 8080
+        env:
+        - name: NODE_ENV
+          value: "staging"
+        - name: BUILD_VERSION
+          value: "v1.0.0-staging"
+        - name: AUTHENTIQ_ISSUER
+          value: "https://authentiq-staging.ntg360.com"
+        - name: AUTHENTIQ_CLIENT_ID
+          value: "ntg360-programmatic-staging"
+        - name: AUTHENTIQ_REDIRECT_URI
+          value: "https://programmatiq-staging.ntg360.com/auth/callback"
+        - name: AUTHENTIQ_LOGOUT_URI
+          value: "https://programmatiq-staging.ntg360.com/auth/logout"
+        - name: API_BASE_URL
+          value: "https://api-staging.ntg360.com"
+        envFrom:
+        - configMapRef:
+            name: programmatic-staging-config
+        - secretRef:
+            name: programmatic-staging-secrets
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+        securityContext:
+          allowPrivilegeEscalation: false
+          runAsNonRoot: true
+          runAsUser: 1000
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL
+      volumes:
+      - name: tmp
+        emptyDir: {}
+      - name: cache
+        emptyDir: {}
+---
+# WI-03: ProgrammatIQ Staging Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: programmatic-frontend-stg
+  namespace: ntg360
+  labels:
+    app: programmatic
+    environment: staging
+spec:
+  selector:
+    app: programmatic
+    environment: staging
+  ports:
+  - port: 8080
+    targetPort: 8080
+    protocol: TCP
+    name: http
+  type: ClusterIP
+---
+# WI-03: ProgrammatIQ Staging ConfigMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: programmatic-staging-config
+  namespace: ntg360
+  labels:
+    app: programmatic
+    environment: staging
+data:
+  NODE_ENV: "staging"
+  BUILD_VERSION: "v1.0.0-staging"
+  AUTHENTIQ_ISSUER: "https://authentiq-staging.ntg360.com"
+  AUTHENTIQ_CLIENT_ID: "ntg360-programmatic-staging"
+  AUTHENTIQ_REDIRECT_URI: "https://programmatiq-staging.ntg360.com/auth/callback"
+  AUTHENTIQ_LOGOUT_URI: "https://programmatiq-staging.ntg360.com/auth/logout"
+  API_BASE_URL: "https://api-staging.ntg360.com"
+  LOG_LEVEL: "debug"
+  ENABLE_ANALYTICS: "true"
+  ENABLE_DEBUG: "true"

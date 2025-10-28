@@ -1,0 +1,125 @@
+# WI-03: ProgrammatIQ Development Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: programmatic-development
+  namespace: ntg360
+  labels:
+    app: programmatic
+    environment: development
+    version: v1.0.0-dev
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: programmatic
+      environment: development
+  template:
+    metadata:
+      labels:
+        app: programmatic
+        environment: development
+        version: v1.0.0-dev
+    spec:
+      containers:
+      - name: programmatic
+        image: ntg360/programmatic:development
+        ports:
+        - containerPort: 8080
+        env:
+        - name: NODE_ENV
+          value: "development"
+        - name: BUILD_VERSION
+          value: "v1.0.0-dev"
+        - name: AUTHENTIQ_ISSUER
+          value: "https://authentiq-dev.ntg360.com"
+        - name: AUTHENTIQ_CLIENT_ID
+          value: "ntg360-programmatic-development"
+        - name: AUTHENTIQ_REDIRECT_URI
+          value: "https://programmatiq-dev.ntg360.com/auth/callback"
+        - name: AUTHENTIQ_LOGOUT_URI
+          value: "https://programmatiq-dev.ntg360.com/auth/logout"
+        - name: API_BASE_URL
+          value: "https://api-dev.ntg360.com"
+        envFrom:
+        - configMapRef:
+            name: programmatic-development-config
+        - secretRef:
+            name: programmatic-development-secrets
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "50m"
+          limits:
+            memory: "256Mi"
+            cpu: "250m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+        securityContext:
+          allowPrivilegeEscalation: false
+          runAsNonRoot: true
+          runAsUser: 1000
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL
+      volumes:
+      - name: tmp
+        emptyDir: {}
+      - name: cache
+        emptyDir: {}
+---
+# WI-03: ProgrammatIQ Development Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: programmatic-frontend-dev
+  namespace: ntg360
+  labels:
+    app: programmatic
+    environment: development
+spec:
+  selector:
+    app: programmatic
+    environment: development
+  ports:
+  - port: 8080
+    targetPort: 8080
+    protocol: TCP
+    name: http
+  type: ClusterIP
+---
+# WI-03: ProgrammatIQ Development ConfigMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: programmatic-development-config
+  namespace: ntg360
+  labels:
+    app: programmatic
+    environment: development
+data:
+  NODE_ENV: "development"
+  BUILD_VERSION: "v1.0.0-dev"
+  AUTHENTIQ_ISSUER: "https://authentiq-dev.ntg360.com"
+  AUTHENTIQ_CLIENT_ID: "ntg360-programmatic-development"
+  AUTHENTIQ_REDIRECT_URI: "https://programmatiq-dev.ntg360.com/auth/callback"
+  AUTHENTIQ_LOGOUT_URI: "https://programmatiq-dev.ntg360.com/auth/logout"
+  API_BASE_URL: "https://api-dev.ntg360.com"
+  LOG_LEVEL: "debug"
+  ENABLE_ANALYTICS: "false"
+  ENABLE_DEBUG: "true"
